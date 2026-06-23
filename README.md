@@ -52,3 +52,15 @@ Before running the core analysis, the raw dataset underwent rigorous data cleani
 ## Repository Structure
 * `data_cleaning.sql`: Contains all DDL and DML scripts used for schema modification, text formatting, and data preparation.
 * `space_missions_analysis.sql`: Contains the optimized analytical queries, CTEs, and window functions used to answer the core business questions.
+
+## 📊 Power BI Dashboards
+Here are the interactive dashboards built to visualize the key performance metrics and historical trends of global space missions:
+
+### 1. Mission Total Expenses Overview
+![Mission Performance Overview](dashboard_page1.png)
+
+### 2. Rocket Launches Trends
+![Regional Analysis](dashboard_page2.png)
+
+### 3. Companies Responsible for Space Missions
+![Fleet Insights](dashboard_page3.png)
