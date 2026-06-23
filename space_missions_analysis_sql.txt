@@ -1,0 +1,139 @@
+-- ==============================================================================
+-- SPACE MISSIONS HISTORICAL ANALYSIS
+-- Core Analytical Queries (Questions 1 - 8)
+-- ==============================================================================
+
+-- 1. What time of day is best to launch rockets? Time with most success.
+WITH SuccessCounts AS (
+    SELECT 
+        time_period, 
+        COUNT(*) AS total_successes
+    FROM space_missions
+    WHERE missionstatus = 'Success'
+    GROUP BY 1
+    ORDER BY 2 DESC
+)
+SELECT
+    time_period,
+    total_successes,
+    COALESCE(total_successes - LEAD(total_successes) OVER (ORDER BY total_successes DESC), 0) AS value_difference,
+    COALESCE(
+        CONCAT(
+            ROUND(
+                (total_successes - LEAD(total_successes) OVER (ORDER BY total_successes DESC)) * 100.0 / 
+                NULLIF(LEAD(total_successes) OVER (ORDER BY total_successes DESC), 0), 
+                2
+            ), 
+            '%'
+        ), 
+        '0'
+    ) AS percentage_lead
+FROM SuccessCounts;
+
+
+-- 2. Which rocket has been used for the most space missions? Is it still active? Does cost affect this activeness?
+SELECT 
+    DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS S_N,
+    rocket,
+    COUNT(*) AS total_missions,
+    MIN(date) AS first_launch,
+    MAX(date) AS most_recent_launch,
+    CASE 
+        WHEN SUM(price) > 1000 THEN CONCAT(ROUND(SUM(price)/1000, 2), 'B')
+        ELSE CONCAT(SUM(price), 'M')
+    END AS COST
+FROM space_missions
+WHERE rocketstatus = 'active'
+GROUP BY 2
+ORDER BY 3 DESC
+LIMIT 20;
+
+-- Note from insights: 
+-- The most used rocket (Cosmos-3M (11K65M)) has been used 446 times, but its last mission was in 2010, with no recorded cost.
+-- However, the active rocket with the most missions (Falcon 9 Block 5) has been used 111 times and has a cost.
+-- In fact, the top 20 active most used rockets, apart from New Shepard (No 15), all have a price attached to them. So, yes, cost affects their activeness.
+
+
+-- 3. Which rocket is still active as of July 2022? Does cost affect this activeness?
+SELECT 
+    rocket,
+    MAX(date) AS date,
+    COUNT(*) AS total_missions,
+    DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS ranks,
+    CONCAT(ROUND(SUM(price), 1), 'M') AS cost
+FROM space_missions
+WHERE rocketstatus = 'active' AND date > '2022-06-30'
+GROUP BY 1;
+
+
+-- 4. Which company has the most success rate?
+SELECT 
+    company,
+    COUNT(*) AS total_attempts,
+    SUM(CASE WHEN missionstatus = 'Success' THEN 1 ELSE 0 END) AS successes,
+    ROUND(SUM(CASE WHEN missionstatus = 'Success' THEN 1 ELSE 0 END) / COUNT(missionstatus) * 100, 2) AS successrate
+FROM space_missions m
+GROUP BY 1
+HAVING successrate = 100.00
+ORDER BY 3 DESC;
+
+
+-- 5. Does launch country impact mission success?
+WITH multi_country_companies AS (
+    SELECT company
+    FROM space_missions
+    GROUP BY company
+    HAVING COUNT(DISTINCT country) >= 2
+)
+SELECT 
+    m.country, 
+    m.company,
+    COUNT(*) AS total_attempts,
+    SUM(CASE WHEN m.missionstatus = 'Success' THEN 1 ELSE 0 END) AS successes,
+    ROUND(SUM(CASE WHEN m.missionstatus = 'Success' THEN 1 ELSE 0 END) / COUNT(missionstatus) * 100, 2) AS successrate
+FROM space_missions m
+WHERE m.company IN (SELECT company FROM multi_country_companies)
+GROUP BY m.country, m.company;
+
+
+-- 6. How have rocket launches trended across time? Has mission success rates increased?
+SELECT
+    decade,
+    ROUND(SUM(CASE WHEN missionstatus = 'Success' THEN 1 ELSE 0 END) / COUNT(missionstatus) * 100, 2) AS successrate
+FROM space_missions
+GROUP BY 1;
+
+-- Note from insights: Never dropped below 91% for success rate after the 1960s.
+
+
+-- 7. Which countries have had the most successful space missions, has it always been that way?
+SELECT 
+    country,
+    decade,
+    SUM(CASE WHEN missionstatus = 'Success' THEN 1 ELSE 0 END) AS total_successes,
+    ROW_NUMBER() OVER (
+        PARTITION BY decade 
+        ORDER BY SUM(CASE WHEN missionstatus = 'Success' THEN 1 ELSE 0 END) DESC
+    ) AS ranks
+FROM space_missions
+GROUP BY 1, 2
+ORDER BY 2, 3 DESC;
+
+-- Note from insights: USA has always been consistently in the top 3 rank since the 1950s up until the 2020s.
+
+
+-- 8. Are there any patterns that can be noticed with the launch location?
+SELECT
+    country AS Countries,
+    (SELECT COUNT(DISTINCT launch_site) 
+     FROM space_missions 
+     WHERE country = site_births.country) AS Total_Unique_Launch_Sites,
+    birth_decade AS Decades,
+    COUNT(*) AS Launch_Sites_Added_Per_Decade,
+    SUM(COUNT(*)) OVER (PARTITION BY country ORDER BY birth_decade) AS Accumulated_Launch_Sites
+FROM (
+    SELECT country, launch_site, MIN(decade) AS birth_decade
+    FROM space_missions
+    GROUP BY country, launch_site
+) AS site_births
+GROUP BY country, birth_decade;
