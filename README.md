@@ -57,10 +57,10 @@ Before running the core analysis, the raw dataset underwent rigorous data cleani
 Here are the interactive dashboards built to visualize the key performance metrics and historical trends of global space missions:
 
 ### 1. Mission Total Expenses Overview
-![Mission Performance Overview](dashboard_page1.png)
+![Mission Performance Overview](Dashboard_page1.png)
 
 ### 2. Rocket Launches Trends
-![Regional Analysis](dashboard_page2.png)
+![Regional Analysis](Dashboard_page2.png)
 
 ### 3. Companies Responsible for Space Missions
-![Fleet Insights](dashboard_page3.png)
+![Fleet Insights](Dashboard_page3.png)
